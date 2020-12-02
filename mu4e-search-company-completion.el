@@ -3,7 +3,7 @@
 ;; Author: Boris Glavic <lordpretzel@gmail.com>
 ;; Maintainer: Boris Glavic <lordpretzel@gmail.com>
 ;; Version: 0.1
-;; Package-Requires: ()
+;; Package-Requires: ((company "0.9.13") (sidewindow-tools "0.1") (advice-tools "0.1") (mu4e-query-fragments "20200913.1558"))
 ;; Homepage: https://github.com/lordpretzel/mu4e-search-company-completion
 ;; Keywords:
 
@@ -31,11 +31,12 @@
 
 ;; ********************************************************************************
 ;; IMPORTS
+(require 'cl-lib)
+(require 'company)
 (require 'sidewindow-tools)
 (require 'advice-tools)
 (require 'mu4e)
 (require 'mu4e-query-fragments)
-(require 'company)
 
 ;; ********************************************************************************
 ;; CUSTOM
@@ -57,6 +58,10 @@
   nil
   "Store completion prefix for mu4e search completion.")
 
+(defvar mu4e-search-company-completion-contacts
+  nil
+  "List of contacts used for completion."
+
 ;; ********************************************************************************
 ;; CONSTANTS
 (defconst mu4e-search-company-completion-mu-query-keywords-help
@@ -69,13 +74,10 @@
     (:key "body" :shortcut "b" :help "Message body")
     (:key "maildir" :shortcut "m" :help "Maildir")
     (:key "msgid" :shortcut "i" :help "Message-ID")
-    (:key "prio" :shortcut "p" :help "Message priority" :opions (
-                                                                 (:key "low")
+    (:key "prio" :shortcut "p" :help "Message priority" :opions ((:key "low")
                                                                  (:key "normal")
-                                                                 (:key "high")
-                                                                 ))
-    (:key "flag" :shortcut "g" :help "Message Flags" :options (
-                                                               (:shortcut "d" :key "draft" :help "Draft Message")
+                                                                 (:key "high")))
+    (:key "flag" :shortcut "g" :help "Message Flags" :options ((:shortcut "d" :key "draft" :help "Draft Message")
                                                                (:shortcut "f" :key "flagged" :help "Flagged")
                                                                (:shortcut "n" :key "new" :help "New message (in new/ Maildir)")
                                                                (:shortcut "p" :key "passed" :help "Passed ('Handled')")
@@ -85,34 +87,26 @@
                                                                (:shortcut "a" :key "attach" :help "Has attachment")
                                                                (:shortcut "z" :key "signed" :help "Signed message")
                                                                (:shortcut "x" :key "encrypted" :help "Encrypted message")
-                                                               (:shortcut "l" :key "list" :help "Mailing-list message")
-                                                               )
-          )
+                                                               (:shortcut "l" :key "list" :help "Mailing-list message")))
     (:key "date" :shortcut "d" :help "Date range")
     (:key "size" :shortcut "z" :help "Message size range")
     (:key "embed" :shortcut "e" :help "Search inside embedded text parts")
     (:key "file" :shortcut "j" :help "Attachment filename")
     (:key "mime" :shortcut "y" :help "MIME-type of one or more message parts")
     (:key "tag" :shortcut "x" :help "Tags for the message")
-    (:key "list" :shortcut "v" :help "Mailing list (the List-Id value)")
-    )
-  "Help for mu query keywords."
-  )
+    (:key "list" :shortcut "v" :help "Mailing list (the List-Id value)"))
+  "Help for mu query keywords.")
 
 ;; store list of string that mu query keywords for autocompletion.
 (defconst mu4e-search-company-completion-mu4e-query-keywords
   (append
    (mapcar (lambda (k) (concat (plist-get k :key) ":")) mu4e-search-company-completion-mu-query-keywords-help)
-   (mapcar (lambda (k) (concat (plist-get k :shortcut) ":")) mu4e-search-company-completion-mu-query-keywords-help)
-   )
-  "List of string that are mu query keywords for autocompletion."
-  )
-
+   (mapcar (lambda (k) (concat (plist-get k :shortcut) ":")) mu4e-search-company-completion-mu-query-keywords-help))
+  "List of string that are mu query keywords for autocompletion.")
 
 ;; storing query fragment help
 (defconst mu4e-search-company-completion-mu4e-query-fragment-help-buffer
   "*mu4e-query-fragment-help-buffer*")
-
 
 ;; ********************************************************************************
 ;; FUNCTIONS
@@ -143,62 +137,53 @@
         (car el)
       nil)))
 
-
 (defun mu4e-search-company-completion-mu4e-show-hide-query-fragment-help-posframe (&optional hide)
-  "Show or hide posframe showing mu4e query fragment information (which fragments correspond to which queries."
+  "Show or hide (if HIDE is non-nil) posframe showing mu4e query fragment information (which fragments correspond to which queries."
   (interactive "P")
-  (let ((help-buffer (get-buffer mu4e-search-company-completion-mu4e-query-fragment-help-buffer))
-        )
+  (let ((help-buffer (get-buffer mu4e-search-company-completion-mu4e-query-fragment-help-buffer)))
+    (message "mu4e query help window do hide? %s" (if hide "hide" "show"))
     ;; buffer does already
     (if help-buffer
         (if hide
             (mapc 'delete-window (get-buffer-window-list help-buffer))
-          (sidewindow-tools/assign-buffer-to-side-window help-buffer 'left 0 0.5 nil t t)
-          )
+          (sidewindow-tools/assign-buffer-to-side-window help-buffer 'left 0 0.5 nil t t))
       ;; buffer does not yet exist
       (unless hide
         (setq help-buffer (get-buffer-create mu4e-search-company-completion-mu4e-query-fragment-help-buffer))
         (let ((helpstr (mu4e-search-company-completion-mu4e-query-fragments-help)))
           ;; create buffer
           (with-current-buffer help-buffer
-            (insert helpstr)
-            )
-          (sidewindow-tools/assign-buffer-to-side-window help-buffer 'left 0 0.5 nil t t)
-          )
-        )
-      )
-    )
-  )
+            (insert helpstr))
+          (sidewindow-tools/assign-buffer-to-side-window help-buffer 'left 0 0.5 nil t t))))))
 
 (defun mu4e-search-company-completion-mu4e-query-fragements-create-completion-candidates ()
   "Create mu4e query fragments completion candidates."
   (setq mu4e-search-company-completion-mu4e-query-fragment-company-candidates
         (mapcar (lambda (f)
                   (propertize (car f) :query (cdr f)))
-                mu4e-query-fragments-list
-                )
-        )
-  )
+                mu4e-query-fragments-list)))
 
 (defun mu4e-search-company-completion-mu4e-query-fragment-candidate-get-query (s)
-  "return query for a mu4e-query-fragments shortcut."
+  "Return query for a mu4e-query-fragments shortcut S."
   (format " [%s]" (get-text-property 0 :query s)))
 
 (defun mu4e-search-company-completion-mu4e-query-fragment-backend (command &optional arg &rest ignored)
-  "Company backend that completes mu4e-query-fragments shortcuts."
-  (interactive (list 'interactive))
-  (case command
-    (interactive (company-begin-backend 'mu4e-search-company-completion-mu4e-query-fragment-backend))
+  "Company backend that completes mu4e-query-fragments shortcuts.
+Given COMMAND and ARG, remainder is IGNORED."
+  (interactive (list 'ia))
+  ;;(message "COMPANY: command %s arg: %s" command arg)
+  (cl-case command
+    (ia (company-begin-backend 'mu4e-search-company-completion-mu4e-query-fragment-backend))
     (prefix (company-grab-symbol-cons "%" 1))
     (candidates
      (cl-remove-if-not
       (lambda (c) (string-prefix-p arg c))
       (mu4e-search-company-completion-mu4e-query-fragements-create-completion-candidates)))
-    (annotation (mu4e-search-company-completion-mu4e-query-fragment-candidate-get-query arg)))
-  )
+    (annotation (mu4e-search-company-completion-mu4e-query-fragment-candidate-get-query arg))))
+
 ;; company backend for mu4e email addresses
 (defun mu4e-search-company-completion-company-mu4e-email-postprocess (candidate)
-  "extract email address from completion candidate"
+  "Extract email address from completion CANDIDATE."
   ;;(message "prefix <%s> cand: <%s>" mu4e-search-company-completion-mu4e-email-completion-prefix candidate)
   (let ((prefix mu4e-search-company-completion-mu4e-email-completion-prefix)
         (modcand candidate)
@@ -208,41 +193,29 @@
           (save-match-data
             (when (string-match "<\\([^>]+\\)>" candidate)
               (setq mu4e-email-completion-match (match-string 1 candidate))
-              (setq modcand mu4e-email-completion-match)
-              )
-            )
+              (setq modcand mu4e-email-completion-match)))
           (delete-region (- (point) (length candidate)) (point))
           (insert prefix)
           (insert modcand)
           ;;(message "%s" mu4e-email-completion-match)
           ;;(message "%s" candidate)
-          )
-      )
-    )
-  (setq mu4e-search-company-completion-mu4e-email-completion-prefix nil)
-  )
+          )))
+  (setq mu4e-search-company-completion-mu4e-email-completion-prefix nil))
 
 ;; fetch information for a keyword
 (defun mu4e-search-company-completion-mu4e-keyword-help-get (key)
-  "Return help for mu-query-keyword `key'."
+  "Return help for mu-query-keyword KEY."
   (let ((el (seq-filter (lambda (x)
                           (or (string-equal (plist-get x :key) key)
                               (string-equal (plist-get x :shortcut) key)))
-                        mu4e-search-company-completion-mu-query-keywords-help))
-        )
+                        mu4e-search-company-completion-mu-query-keywords-help)))
     (if el
         (car el)
-      nil
-      )
-    )
-  )
+      nil)))
 
 ;; generate completion candidates for mu4e company backend
 (defun mu4e-search-company-completion-mu4e-query-completion-generate-candidates (arg)
-  "Given string to complete, generate candidates and store
-            prefix until column (the mu keyword). If string does not contain
-            column try to complete the keyword. If there is a colon provide
-            appropriate completion based on the keyword."
+  "Given string ARG to complete, generate candidates and store prefix until column (the mu keyword).  If string does not contain column try to complete the keyword.  If there is a colon provide appropriate completion based on the keyword."
   ;;(message "%s" (concat ">>>" arg "<<<"))
   (if (not (eq (string-match-p "[^:]*$" arg) 0))
       ;; have keyword, determine completion based on keyword
@@ -252,46 +225,40 @@
         (pcase prefix
           ;; an address field -> complete with mu4e email address completion
           (`,(or "from:" "f:" "to:" "t:" "cc:" "c:")
-           (let ((res))
-             (maphash (lambda (key value) (when (cl-search suffix key) (push key res))) mu4e~contacts)
-             res
-             )
-           )
+             (--filter (cl-search suffix it) mu4e-search-company-completion-contacts))
           ;; flag
           (`,(or "flag:" "g:")
            (let* ((flagshelp (plist-get (mu4e-search-company-completion-mu4e-keyword-help-get "flag") :options))
-                  (flags (append (mapcar (lambda (x) (plist-get x :key)) flagshelp)))
-                  )
-             ;;(message "flag-complete <%s> for flags <%s>" suffix (mapconcat 'identity flags " "))
-             (all-completions suffix flags)
-             )
-           )
-          )
-        )
+                  (flags (append (mapcar (lambda (x) (plist-get x :key)) flagshelp))))
+             ;;(message "flag-complete <%s> for flags <%s>" suffix (mapconcat 'identity fslags " "))
+             (all-completions suffix flags)))))
     ;; no keyword yet, try to complete keyword
     (let* ((keywords mu4e-search-company-completion-mu4e-query-keywords))
-      (seq-filter (lambda (x) (string-prefix-p arg x)) keywords)
-      )
-    )
-  )
+      (seq-filter (lambda (x) (string-prefix-p arg x)) keywords))))
+
+;; generate an annotation (the name of the person mapped to the email address
+(defun mu4e-search-company-completion-mu4e-query-completion-generate-annotation (s)
+  "Generate an annotation the name of the person for email address S."
+  (let* ((email (get-text-property 0 :email s)))
+         (format " [%s]" email)))
 
 ;; function that grabs non-space text before point
 (defun mu4e-search-company-completion-company-grab-symbol-greedy ()
+  "Find prefix to complete."
   (when (looking-back "[^[:space:]]+" nil t)
-    (or (match-string-no-properties 0) ""))
-  )
+    (or (match-string-no-properties 0) "")))
 
 ;; company backend for email addresses
 (defun mu4e-search-company-completion-mu4e-email-addresses-backend (command &optional arg &rest ignored)
-  "Company backend that completes mu4e-query-fragments shortcuts."
-  (interactive (list 'interactive))
-  (case command
-    (interactive (company-begin-backend 'mu4e-search-company-completion-mu4e-email-addresses-backend))
+  "Company backend that completes mu4e-query-fragments shortcuts.  Given COMMAND and ARG dispatch to the right function.  Remaining arguments are IGNORED."
+  ;;(smessage "query backend: command %s arg: %s" command arg)
+  (interactive (list 'ia))
+  (cl-case command
+    (ia (company-begin-backend 'mu4e-search-company-completion-mu4e-email-addresses-backend))
     (prefix (mu4e-search-company-completion-company-grab-symbol-greedy))
     (candidates (mu4e-search-company-completion-mu4e-query-completion-generate-candidates arg))
-    (post-completion (mu4e-search-company-completion-company-mu4e-email-postprocess arg))
-    )
-  )
+    (annotation (mu4e-search-company-completion-mu4e-query-completion-generate-annotation arg))
+    (post-completion (mu4e-search-company-completion-company-mu4e-email-postprocess arg))))
 
 ;; Custom Minor Mode
 (define-minor-mode mu4e-query-completion-mode
@@ -301,36 +268,32 @@
   ;; The indicator for the mode line.
   " QueryCompletion"
   ;; The minor mode keymap
-  `(
-    (,(kbd "<tab>") . company-complete)
-    )
+  `((,(kbd "<tab>") . company-complete))
   ;; Make mode global rather than buffer local
   :global 1
   ;; customization group
-  :group 'mu4e-search-company-completion
-  )
+  :group 'mu4e-search-company-completion)
 
 ;; hook for setting right company backend in mu4e search
 (defun mu4e-search-company-completion-mu4e-search-hook ()
-  "Setup stuff for mu4e search including query-fragment autocompletion"
+  "Setup stuff for mu4e search including query-fragment autocompletion."
   (company-mode 1)
   (setq-local company-backends
               '((mu4e-search-company-completion-mu4e-email-addresses-backend
                  mu4e-search-company-completion-mu4e-query-fragment-backend)))
   (setq-local company-minimum-prefix-length 1)
   (mu4e~compose-setup-completion)
-  (mu4e-query-completion-mode 1)
-  )
+  (mu4e-query-completion-mode 1))
 
 ;; hook that removes mu4e minibuffer-setup hooks for search (e.g., cleanup after C-g)
 (defun mu4e-search-company-completion-mu4e-search-minibuffer-quit-hook ()
   "remove hooks from minibuffer-setup-hook after user quits mu4e-headers-search."
   (message "in quit hook!")
+  ;;(company-mode 0)
   (mu4e-query-completion-mode -1)
   (remove-hook 'minibuffer-setup-hook 'mu4e-search-company-completion-mu4e-search-hook)
   (remove-hook 'minibuffer-exit-hook 'mu4e-search-company-completion-mu4e-search-minibuffer-quit-hook)
-  (mu4e-search-company-completion-mu4e-show-hide-query-fragment-help-posframe t)
-  )
+  (mu4e-search-company-completion-mu4e-show-hide-query-fragment-help-posframe t))
 
 ;; replacement for mu4e-headers-search that activates company completion
 (defun mu4e-search-company-completion-mu4e-headers-search (&optional expr prompt edit
@@ -356,43 +319,34 @@
       (minibuffer-with-setup-hook 'mu4e-search-company-completion-mu4e-search-hook
         (setq sexpr (if edit
                         (read-string prompt expr)
-                      (read-string prompt nil 'mu4e~headers-search-hist)))
-        )
-      )
+                      (read-string prompt nil 'mu4e~headers-search-hist)))))
     ;; handle query
     (mu4e-search-company-completion-mu4e-show-hide-query-fragment-help-posframe t)
     (mu4e-mark-handle-when-leaving)
     (mu4e~headers-search-execute sexpr ignore-history)
     (setq mu4e~headers-msgid-target msgid
-          mu4e~headers-view-target show)
-    )
-  )
+          mu4e~headers-view-target show)))
 
 (defun mu4e-search-company-completion-mu4e-headers-search-narrow (filter)
-  "Narrow the last search by appending search expression FILTER to
-          the last search expression. Note that you can go back to previous
-          query (effectively, 'widen' it), with `mu4e-headers-query-prev'."
+  "Narrow the last search by appending search expression FILTER to the last search expression.  Note that you can go back to previous query (effectively, 'widen' it), with `mu4e-headers-query-prev'."
   (interactive
    (let ((filter))
      (add-hook 'minibuffer-exit-hook #'mu4e-search-company-completion-mu4e-search-minibuffer-quit-hook)
      (mu4e-search-company-completion-mu4e-show-hide-query-fragment-help-posframe)
      (minibuffer-with-setup-hook 'mu4e-search-company-completion-mu4e-search-hook
        (setq filter (read-string (mu4e-format "Narrow down to: ")
-                                 nil 'mu4e~headers-search-hist nil t)
-             )
-       )
-     (list filter)
-     ))
+                                 nil 'mu4e~headers-search-hist nil t)))
+     (list filter)))
   (unless mu4e~headers-last-query
     (mu4e-warn "There's nothing to filter"))
   (mu4e-headers-search
-   (format "(%s) AND (%s)" mu4e~headers-last-query filter))
-  )
+   (format "(%s) AND (%s)" mu4e~headers-last-query filter)))
 
 ;; setup `mu4e-search-company-completion' to by advising mu4e functions
 ;;;###autoload
 (defun mu4e-search-company-completion-setup ()
   "Setup `mu4e-search-company-completion' to by advising mu4e functions."
+  (interactive)
   (advice-tools/advice-add-if-def
    'mu4e-headers-search-narrow
    :override
@@ -401,19 +355,20 @@
    'mu4e-headers-search
    :override
    'mu4e-search-company-completion-mu4e-headers-search)
-  (mu4e-search-company-completion-mu4e-query-fragements-create-completion-candidates)
-  )
+  (when (not mu4e-search-company-completion-contacts)
+    (setq mu4e-search-company-completion-contacts (counsel-mu4e-and-bbdb-full-contacts-sorted)))
+  (mu4e-search-company-completion-mu4e-query-fragements-create-completion-candidates))
 
 ;;;###autoload
 (defun mu4e-search-company-completion-remove ()
   "Unadvise `mu4e' functions."
+  (interactive)
   (advice-tools/advice-remove-if-def
    'mu4e-headers-search-narrow
    'mu4e-search-company-completion-mu4e-headers-search-narrow)
   (advice-tools/advice-remove-if-def
    'mu4e-headers-search
-   'mu4e-search-company-completion-mu4e-headers-search)
-  )
+   'mu4e-search-company-completion-mu4e-headers-search))
 
 (provide 'mu4e-search-company-completion)
 ;;; mu4e-search-company-completion.el ends here
