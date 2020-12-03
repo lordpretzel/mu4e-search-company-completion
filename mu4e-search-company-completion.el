@@ -3,7 +3,7 @@
 ;; Author: Boris Glavic <lordpretzel@gmail.com>
 ;; Maintainer: Boris Glavic <lordpretzel@gmail.com>
 ;; Version: 0.1
-;; Package-Requires: ((company "0.9.13") (sidewindow-tools "0.1") (advice-tools "0.1") (mu4e-query-fragments "20200913.1558"))
+;; Package-Requires: ((advice-tools "0.1") (company "0.9.13") (counsel-mu4e-and-bbdb-addresses "0.1") (dash "2.12") (mu4e-query-fragments "20200913.1558") (sidewindow-tools "0.1"))
 ;; Homepage: https://github.com/lordpretzel/mu4e-search-company-completion
 ;; Keywords:
 
@@ -37,6 +37,8 @@
 (require 'advice-tools)
 (require 'mu4e)
 (require 'mu4e-query-fragments)
+(require 'dash)
+(require 'counsel-mu4e-and-bbdb-addresses)
 
 ;; ********************************************************************************
 ;; CUSTOM
@@ -46,13 +48,11 @@
 ;; VARIABLES
 (defvar mu4e-email-completion-match
   nil
-  "Store completion matches for mu4e search completion."
-  )
+  "Store completion matches for mu4e search completion.")
 
 (defvar mu4e-search-company-completion-mu4e-query-fragment-company-candidates
   nil
-  "Company completion candidates for mu4e-query-fragments."
-  )
+  "Company completion candidates for mu4e-query-fragments.")
 
 (defvar mu4e-search-company-completion-mu4e-email-completion-prefix
   nil
@@ -60,7 +60,7 @@
 
 (defvar mu4e-search-company-completion-contacts
   nil
-  "List of contacts used for completion."
+  "List of contacts used for completion.")
 
 ;; ********************************************************************************
 ;; CONSTANTS
@@ -126,16 +126,6 @@
                                     mu4e-query-fragments-list "\n")))
          (muhelp (mapconcat (lambda (x) (concat (propertize (plist-get x :key) 'face '(:foreground "red" :height 0.8)) " [" (propertize (plist-get x :shortcut) 'face '(:foreground "red" :height 0.8)) "] - " (plist-get x :help))) mu4e-search-company-completion-mu-query-keywords-help "\n")))
     (concat muhelp "\n\n" fragmenthelp)))
-
-(defun mu4e-search-company-completion-mu4e-keyword-help-get (key)
-  "Return help for mu-query-keyword KEY."
-  (let ((el (seq-filter (lambda (x)
-                          (or (string-equal (plist-get x :key) key)
-                              (string-equal (plist-get x :shortcut) key)))
-                        mu4e-search-company-completion-mu-query-keywords-help)))
-    (if el
-        (car el)
-      nil)))
 
 (defun mu4e-search-company-completion-mu4e-show-hide-query-fragment-help-posframe (&optional hide)
   "Show or hide (if HIDE is non-nil) posframe showing mu4e query fragment information (which fragments correspond to which queries."
