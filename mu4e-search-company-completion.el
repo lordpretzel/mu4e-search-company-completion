@@ -215,7 +215,7 @@ Given COMMAND and ARG, remainder is IGNORED."
         (pcase prefix
           ;; an address field -> complete with mu4e email address completion
           (`,(or "from:" "f:" "to:" "t:" "cc:" "c:")
-             (--filter (cl-search suffix it) mu4e-search-company-completion-contacts))
+             (--filter (string-match-p suffix it) mu4e-search-company-completion-contacts))
           ;; flag
           (`,(or "flag:" "g:")
            (let* ((flagshelp (plist-get (mu4e-search-company-completion-mu4e-keyword-help-get "flag") :options))
