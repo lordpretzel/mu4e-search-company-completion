@@ -4,4 +4,17 @@
 ;(eldev-use-package-archive 'gnu)
 (eldev-use-package-archive 'melpa)
 
+(add-to-list 'load-path "/usr/local/share/emacs/site-lisp/mu4e/")
+(eldev-use-local-dependency "/usr/local/share/emacs/site-lisp/mu4e/")
+
+(add-to-list 'load-path "~/scripts/elisp/advice-tools")
+(eldev-use-local-dependency "~/scripts/elisp/advice-tools")
+
+(add-to-list 'load-path "~/scripts/elisp/counsel-mu4e-and-bbdb-addresses")
+(eldev-use-local-dependency "~/scripts/elisp/counsel-mu4e-and-bbdb-addresses")
+
+(add-to-list 'load-path "~/scripts/elisp/sidewindow-tools")
+(eldev-use-local-dependency "~/scripts/elisp/sidewindow-tools")
+
+
 (eldev-use-plugin 'autoloads)

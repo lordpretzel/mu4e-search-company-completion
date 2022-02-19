@@ -41,6 +41,14 @@
 (require 'counsel-mu4e-and-bbdb-addresses)
 
 ;; ********************************************************************************
+;; ALIASES FOR MU4E FUNCTIONS
+(when (version-list-<= '(1 7) (version-to-list mu4e-mu-version))
+  (defvaralias 'mu4e~headers-search-hist 'mu4e--search-hist)
+  (defvaralias 'mu4e~headers-last-query 'mu4e--search-last-query)
+  (defalias 'mu4e~headers-search-execute 'mu4e--search-execute))
+
+
+;; ********************************************************************************
 ;; CUSTOM
 
 
