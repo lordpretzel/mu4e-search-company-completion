@@ -136,7 +136,9 @@
     (concat muhelp "\n\n" fragmenthelp)))
 
 (defun mu4e-search-company-completion-mu4e-show-hide-query-fragment-help-posframe (&optional hide)
-  "Show or hide (if HIDE is non-nil) posframe showing mu4e query fragment information (which fragments correspond to which queries."
+  "Show or hide (if HIDE is non-nil) window showing mu4e query fragment info.
+
+This shows (which fragments correspond to which queries."
   (interactive "P")
   (let ((help-buffer (get-buffer mu4e-search-company-completion-mu4e-query-fragment-help-buffer)))
     (message "mu4e query help window do hide? %s" (if hide "hide" "show"))
@@ -213,7 +215,11 @@ Given COMMAND and ARG, remainder is IGNORED."
 
 ;; generate completion candidates for mu4e company backend
 (defun mu4e-search-company-completion-mu4e-query-completion-generate-candidates (arg)
-  "Given string ARG to complete, generate candidates and store prefix until column (the mu keyword).  If string does not contain column try to complete the keyword.  If there is a colon provide appropriate completion based on the keyword."
+  "Given string ARG to complete, generate candidates.
+
+Store prefix until column (the mu keyword). If string does not
+contain column try to complete the keyword. If there is a colon
+provide appropriate completion based on the keyword."
   ;;(message "%s" (concat ">>>" arg "<<<"))
   (if (not (eq (string-match-p "[^:]*$" arg) 0))
       ;; have keyword, determine completion based on keyword
@@ -248,7 +254,10 @@ Given COMMAND and ARG, remainder is IGNORED."
 
 ;; company backend for email addresses
 (defun mu4e-search-company-completion-mu4e-email-addresses-backend (command &optional arg &rest ignored)
-  "Company backend that completes mu4e-query-fragments shortcuts.  Given COMMAND and ARG dispatch to the right function.  Remaining arguments are IGNORED."
+  "Company backend that completes mu4e-query-fragments shortcuts.
+
+Given COMMAND and ARG dispatch to the right function. Remaining
+arguments are IGNORED."
   ;;(smessage "query backend: command %s arg: %s" command arg)
   (interactive (list 'ia))
   (cl-case command
@@ -260,13 +269,13 @@ Given COMMAND and ARG, remainder is IGNORED."
 
 ;; Custom Minor Mode
 (define-minor-mode mu4e-query-completion-mode
-  "When activated <tab> calls company-complete"
+  "When activated <tab> calls company-complete."
   ;; The initial value - Set to 1 to enable by default
-  nil
+  :init-value nil
   ;; The indicator for the mode line.
-  " QueryCompletion"
+  :lighter " QueryCompletion"
   ;; The minor mode keymap
-  `((,(kbd "<tab>") . company-complete))
+  :keymap `((,(kbd "<tab>") . company-complete))
   ;; Make mode global rather than buffer local
   :global 1
   ;; customization group
@@ -285,7 +294,7 @@ Given COMMAND and ARG, remainder is IGNORED."
 
 ;; hook that removes mu4e minibuffer-setup hooks for search (e.g., cleanup after C-g)
 (defun mu4e-search-company-completion-mu4e-search-minibuffer-quit-hook ()
-  "remove hooks from minibuffer-setup-hook after user quits mu4e-headers-search."
+  "Remove hooks from `minibuffer-setup-hook' after user quits mu4e-headers-search."
   (message "in quit hook!")
   ;;(company-mode 0)
   (mu4e-query-completion-mode -1)
@@ -296,15 +305,17 @@ Given COMMAND and ARG, remainder is IGNORED."
 ;; replacement for mu4e-headers-search that activates company completion
 (defun mu4e-search-company-completion-mu4e-headers-search (&optional expr prompt edit
                                       ignore-history msgid show)
-  "Search in the mu database for EXPR, and switch to the output
-            buffer for the results. This is an interactive function which ask
-            user for EXPR. PROMPT, if non-nil, is the prompt used by this
-            function (default is \"Search for:\"). If EDIT is non-nil,
-            instead of executing the query for EXPR, let the user edit the
-            query before executing it. If IGNORE-HISTORY is true, do *not*
-            update the query history stack. If MSGID is non-nil, attempt to
-            move point to the first message with that message-id after
-            searching. If SHOW is non-nil, show the message with MSGID."
+  "Search in the mu database for EXPR.
+
+Also switch to the output buffer for the results. This is an
+interactive function which ask user for EXPR. PROMPT, if non-nil,
+is the prompt used by this function (default is \"Search for:\").
+If EDIT is non-nil, instead of executing the query for EXPR, let
+the user edit the query before executing it. If IGNORE-HISTORY is
+true, do *not* update the query history stack. If MSGID is
+non-nil, attempt to move point to the first message with that
+message-id after searching. If SHOW is non-nil, show the message
+with MSGID."
   ;; note: we don't want to update the history if this query comes from
   ;; `mu4e~headers-query-next' or `mu4e~headers-query-prev'."
   (interactive)
@@ -321,12 +332,16 @@ Given COMMAND and ARG, remainder is IGNORED."
     ;; handle query
     (mu4e-search-company-completion-mu4e-show-hide-query-fragment-help-posframe t)
     (mu4e-mark-handle-when-leaving)
-    (mu4e~headers-search-execute sexpr ignore-history)
-    (setq mu4e~headers-msgid-target msgid
-          mu4e~headers-view-target show)))
+    (mu4e--search-execute sexpr ignore-history)
+    (setq mu4e--search-msgid-target msgid
+          mu4e--search-view-target show)))
 
 (defun mu4e-search-company-completion-mu4e-headers-search-narrow (filter)
-  "Narrow the last search by appending search expression FILTER to the last search expression.  Note that you can go back to previous query (effectively, 'widen' it), with `mu4e-headers-query-prev'."
+  "Narrow the last search by appending search expression FILTER.
+
+FILTER is appended to the last search expression. Note that you
+can go back to previous query (effectively, 'widen' it), with
+`mu4e-headers-query-prev'."
   (interactive
    (let ((filter))
      (add-hook 'minibuffer-exit-hook #'mu4e-search-company-completion-mu4e-search-minibuffer-quit-hook)
@@ -335,10 +350,10 @@ Given COMMAND and ARG, remainder is IGNORED."
        (setq filter (read-string (mu4e-format "Narrow down to: ")
                                  nil 'mu4e~headers-search-hist nil t)))
      (list filter)))
-  (unless mu4e~headers-last-query
+  (unless mu4e--search-last-query
     (mu4e-warn "There's nothing to filter"))
-  (mu4e-headers-search
-   (format "(%s) AND (%s)" mu4e~headers-last-query filter)))
+  (mu4e-search
+   (format "(%s) AND (%s)" mu4e--search-last-query filter)))
 
 ;; setup `mu4e-search-company-completion' to by advising mu4e functions
 ;;;###autoload
@@ -346,11 +361,11 @@ Given COMMAND and ARG, remainder is IGNORED."
   "Setup `mu4e-search-company-completion' to by advising mu4e functions."
   (interactive)
   (advice-tools/advice-add-if-def
-   'mu4e-headers-search-narrow
+   'mu4e-search-narrow
    :override
    'mu4e-search-company-completion-mu4e-headers-search-narrow)
   (advice-tools/advice-add-if-def
-   'mu4e-headers-search
+   'mu4e-search
    :override
    'mu4e-search-company-completion-mu4e-headers-search)
   (when (not mu4e-search-company-completion-contacts)
@@ -362,10 +377,10 @@ Given COMMAND and ARG, remainder is IGNORED."
   "Unadvise `mu4e' functions."
   (interactive)
   (advice-tools/advice-remove-if-def
-   'mu4e-headers-search-narrow
+   'mu4e-search-narrow
    'mu4e-search-company-completion-mu4e-headers-search-narrow)
   (advice-tools/advice-remove-if-def
-   'mu4e-headers-search
+   'mu4e-search
    'mu4e-search-company-completion-mu4e-headers-search))
 
 (provide 'mu4e-search-company-completion)
