@@ -186,8 +186,7 @@ Given COMMAND and ARG, remainder is IGNORED."
   "Extract email address from completion CANDIDATE."
   ;;(message "prefix <%s> cand: <%s>" mu4e-search-company-completion-mu4e-email-completion-prefix candidate)
   (let ((prefix mu4e-search-company-completion-mu4e-email-completion-prefix)
-        (modcand candidate)
-        )
+        (modcand candidate))
     (if prefix
         (progn
           (save-match-data
@@ -369,7 +368,7 @@ can go back to previous query (effectively, 'widen' it), with
    :override
    'mu4e-search-company-completion-mu4e-headers-search)
   (when (not mu4e-search-company-completion-contacts)
-    (setq mu4e-search-company-completion-contacts (counsel-mu4e-and-bbdb-full-contacts-sorted)))
+    (counsel-mu4e-and-bbdb-full-contacts-sorted))
   (mu4e-search-company-completion-mu4e-query-fragements-create-completion-candidates))
 
 ;;;###autoload

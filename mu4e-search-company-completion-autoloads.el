@@ -6,6 +6,20 @@
                          (or (file-name-directory #$) (car load-path))))
 
 
+;;;### (autoloads nil "flycheck_mu4e-search-company-completion" "flycheck_mu4e-search-company-completion.el"
+;;;;;;  (0 0 0 0))
+;;; Generated autoloads from flycheck_mu4e-search-company-completion.el
+
+(autoload 'mu4e-search-company-completion-setup "flycheck_mu4e-search-company-completion" "\
+Setup `mu4e-search-company-completion' to by advising mu4e functions." t nil)
+
+(autoload 'mu4e-search-company-completion-remove "flycheck_mu4e-search-company-completion" "\
+Unadvise `mu4e' functions." t nil)
+
+(register-definition-prefixes "flycheck_mu4e-search-company-completion" '("mu4e-"))
+
+;;;***
+
 ;;;### (autoloads nil "mu4e-search-company-completion" "mu4e-search-company-completion.el"
 ;;;;;;  (0 0 0 0))
 ;;; Generated autoloads from mu4e-search-company-completion.el
