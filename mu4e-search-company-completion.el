@@ -325,9 +325,9 @@ with MSGID."
       (add-hook 'minibuffer-exit-hook #'mu4e-search-company-completion-mu4e-search-minibuffer-quit-hook)
       (mu4e-search-company-completion-mu4e-show-hide-query-fragment-help-posframe)
       (minibuffer-with-setup-hook 'mu4e-search-company-completion-mu4e-search-hook
-        (setq sexpr (if edit
-                        (read-string prompt expr)
-                      (read-string prompt nil 'mu4e~headers-search-hist)))))
+        (setq sexpr (substring-no-properties (if edit
+                                                 (read-string prompt expr)
+                                               (read-string prompt nil 'mu4e~headers-search-hist))))))
     ;; handle query
     (mu4e-search-company-completion-mu4e-show-hide-query-fragment-help-posframe t)
     (mu4e-mark-handle-when-leaving)
