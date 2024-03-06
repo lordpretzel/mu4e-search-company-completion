@@ -47,6 +47,8 @@
   (defvaralias 'mu4e~headers-last-query 'mu4e--search-last-query)
   (defalias 'mu4e~headers-search-execute 'mu4e--search-execute))
 
+(when (version-list-<= '(1 12) (version-to-list mu4e-mu-version))
+  (defalias 'mu4e~compose-setup-completion 'mu4e--compose-setup-completion))
 
 ;; ********************************************************************************
 ;; CUSTOM
@@ -288,6 +290,7 @@ arguments are IGNORED."
               '((mu4e-search-company-completion-mu4e-email-addresses-backend
                  mu4e-search-company-completion-mu4e-query-fragment-backend)))
   (setq-local company-minimum-prefix-length 1)
+
   (mu4e~compose-setup-completion)
   (mu4e-query-completion-mode 1))
 
