@@ -72,6 +72,10 @@
   nil
   "List of contacts used for completion.")
 
+(defvar mu4e-search-company-completion-maildirs
+  nil
+  "List mu4e maildirs for completion.")
+
 ;; ********************************************************************************
 ;; CONSTANTS
 (defconst mu4e-search-company-completion-mu-query-keywords-help
@@ -214,6 +218,17 @@ Given COMMAND and ARG, remainder is IGNORED."
         (car el)
       nil)))
 
+(defun mu4e-search-company-completion--get-maildir-list ()
+  "Return a list of mu4e maildirs for completion."
+  (unless mu4e-search-company-completion-maildirs
+    (setq mu4e-search-company-completion-maildirs
+          (append
+           (-uniq (--map (substring it 0 (string-match "[/][^/]*$" it))  mu4e-maildir-list))
+           mu4e-maildir-list       
+           )))
+  mu4e-search-company-completion-maildirs)
+
+
 ;; generate completion candidates for mu4e company backend
 (defun mu4e-search-company-completion-mu4e-query-completion-generate-candidates (arg)
   "Given string ARG to complete, generate candidates.
@@ -236,7 +251,11 @@ provide appropriate completion based on the keyword."
            (let* ((flagshelp (plist-get (mu4e-search-company-completion-mu4e-keyword-help-get "flag") :options))
                   (flags (append (mapcar (lambda (x) (plist-get x :key)) flagshelp))))
              ;;(message "flag-complete <%s> for flags <%s>" suffix (mapconcat 'identity fslags " "))
-             (all-completions suffix flags)))))
+             (all-completions suffix flags)))
+          ;; Maildirs
+          (`,(or "maildir:" "m:")
+           (let* ((maildirs (mu4e-search-company-completion--get-maildir-list)))
+             (all-completions suffix maildirs)))))
     ;; no keyword yet, try to complete keyword
     (let* ((keywords mu4e-search-company-completion-mu4e-query-keywords))
       (seq-filter (lambda (x) (string-prefix-p arg x)) keywords))))
